@@ -1,0 +1,223 @@
+<html><head><base href="https://simulated-web-environment/" />
+<title>SVM with RBF Kernel - Interactive 3D Visualization (Dark Theme)</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #2c3e50 0%, #1a2533 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #ecf0f1;
+    }
+    .container {
+        max-width: 1200px;
+        width: 95%;
+        background-color: #34495e;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    h1, h2 {
+        color: #ecf0f1;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    h1 {
+        font-size: 2.5em;
+        font-weight: 700;
+    }
+    h2 {
+        font-size: 1.8em;
+        font-weight: 400;
+    }
+    #plot3d {
+        width: 100%;
+        height: 600px;
+        margin-bottom: 30px;
+    }
+    .controls {
+        display: flex;
+        justify-content: space-around;
+        margin: 30px 0;
+        flex-wrap: wrap;
+    }
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 10px;
+        padding: 15px;
+        background-color: #2c3e50;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    .control-group:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    }
+    label {
+        margin-bottom: 10px;
+        font-weight: 700;
+        color: #bdc3c7;
+    }
+    input[type="range"] {
+        width: 200px;
+        margin-bottom: 10px;
+        -webkit-appearance: none;
+        background: #4a6572;
+        outline: none;
+        border-radius: 15px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #3498db;
+        cursor: pointer;
+        border-radius: 50%;
+    }
+    .formula {
+        background-color: #2c3e50;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 30px 0;
+        font-family: 'Courier New', monospace;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    }
+    .formula p {
+        margin: 10px 0;
+        font-size: 1.1em;
+        color: #ecf0f1;
+    }
+    #gammaValue, #pointSizeValue, #opacityValue {
+        font-weight: 700;
+        color: #3498db;
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>SVM with RBF Kernel</h1>
+        <h2>Interactive 3D Visualization</h2>
+        
+        <div class="formula">
+            <h2>RBF Kernel Formula:</h2>
+            <p>K(x, x') = exp(-γ ||x - x'||²)</p>
+            <p>Where γ (gamma) is a parameter that determines the influence of each training example.</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="gamma">Gamma (γ):</label>
+                <input type="range" id="gamma" min="0.1" max="5" step="0.1" value="1">
+                <span>Value: <span id="gammaValue">1</span></span>
+            </div>
+            <div class="control-group">
+                <label for="pointSize">Point Size:</label>
+                <input type="range" id="pointSize" min="2" max="20" value="6">
+                <span>Value: <span id="pointSizeValue">6</span></span>
+            </div>
+            <div class="control-group">
+                <label for="opacity">Opacity:</label>
+                <input type="range" id="opacity" min="0" max="1" step="0.1" value="0.8">
+                <span>Value: <span id="opacityValue">0.8</span></span>
+            </div>
+        </div>
+        
+        <div id="plot3d"></div>
+    </div>
+
+    <script>
+        // Generate sample data
+        function generateData(n = 100) {
+            const X = [];
+            const y = [];
+            for (let i = 0; i < n; i++) {
+                const x1 = Math.random() * 4 - 2;
+                const x2 = Math.random() * 4 - 2;
+                X.push([x1, x2]);
+                y.push((x1*x1 + x2*x2 < 1) ? 0 : 1);
+            }
+            return { X, y };
+        }
+
+        const { X, y } = generateData();
+
+        function rbfKernel(x1, x2, gamma) {
+            const diff = math.subtract(x1, x2);
+            const squaredNorm = math.dot(diff, diff);
+            return Math.exp(-gamma * squaredNorm);
+        }
+
+        function updatePlot() {
+            const gamma = parseFloat(document.getElementById('gamma').value);
+            const pointSize = parseInt(document.getElementById('pointSize').value);
+            const opacity = parseFloat(document.getElementById('opacity').value);
+
+            document.getElementById('gammaValue').textContent = gamma.toFixed(1);
+            document.getElementById('pointSizeValue').textContent = pointSize;
+            document.getElementById('opacityValue').textContent = opacity.toFixed(1);
+
+            // Calculate RBF kernel values
+            const z = X.map(x => rbfKernel(x, [0, 0], gamma));
+
+            const trace = {
+                x: X.map(p => p[0]),
+                y: X.map(p => p[1]),
+                z: z,
+                mode: 'markers',
+                type: 'scatter3d',
+                marker: {
+                    color: y,
+                    size: pointSize,
+                    opacity: opacity,
+                    colorscale: [
+                        [0, 'rgb(52, 152, 219)'],  // Dodger Blue
+                        [1, 'rgb(231, 76, 60)']    // Pomegranate
+                    ]
+                }
+            };
+
+            const layout = {
+                title: {
+                    text: 'RBF Kernel Visualization',
+                    font: {
+                        family: 'Roboto, sans-serif',
+                        size: 24,
+                        color: '#ecf0f1'
+                    }
+                },
+                scene: {
+                    xaxis: {title: 'X1', range: [-2, 2], color: '#ecf0f1'},
+                    yaxis: {title: 'X2', range: [-2, 2], color: '#ecf0f1'},
+                    zaxis: {title: 'K(x, 0)', range: [0, 1], color: '#ecf0f1'},
+                    camera: {
+                        eye: {x: 1.5, y: 1.5, z: 1.2}
+                    },
+                    bgcolor: '#2c3e50'
+                },
+                margin: {l: 0, r: 0, b: 0, t: 50},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            Plotly.react('plot3d', [trace], layout);
+        }
+
+        // Initial plot
+        updatePlot();
+
+        // Add event listeners to controls
+        document.getElementById('gamma').addEventListener('input', updatePlot);
+        document.getElementById('pointSize').addEventListener('input', updatePlot);
+        document.getElementById('opacity').addEventListener('input', updatePlot);
+    </script>
+</body></html>
